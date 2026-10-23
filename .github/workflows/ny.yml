@@ -1,0 +1,40 @@
+name: ny-market-alerts
+
+on:
+  schedule:
+    - cron: "*/5 12-14 * * 1-5"   # پنجرهٔ پیام «اوپن» (ساعت UTC)
+    - cron: "*/5 18-20 * * 1-5"   # پنجرهٔ پیام «کلوز» (ساعت UTC)
+  workflow_dispatch: {}
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests
+
+      - uses: actions/cache@v4
+        with:
+          path: ny_state.json
+          key: ny-state-${{ github.run_id }}
+          restore-keys: ny-state-
+
+      # فقط وقتی دستی اجرا کنی: جدول زمان‌ها را چاپ و یک پیام تست می‌فرستد
+      - name: Manual test
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          python ny_alert.py --test
+          python ny_alert.py --send-test
+        env:
+          NY_BOT_TOKEN: ${{ secrets.NY_BOT_TOKEN }}
+          NY_CHAT_ID: ${{ secrets.NY_CHAT_ID }}
+
+      - run: python ny_alert.py --once
+        env:
+          NY_BOT_TOKEN: ${{ secrets.NY_BOT_TOKEN }}
+          NY_CHAT_ID: ${{ secrets.NY_CHAT_ID }}
