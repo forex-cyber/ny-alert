@@ -1,0 +1,44 @@
+name: meme-alerts
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: meme-alerts
+  cancel-in-progress: false
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests
+
+      - uses: actions/cache@v4
+        with:
+          path: meme_state.json
+          key: meme-state-${{ github.run_id }}
+          restore-keys: meme-state-
+
+      # only on manual runs: show newest tokens + send one test message
+      - name: Manual test
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          python meme_alert.py --test
+          python meme_alert.py --send-test
+        env:
+          MEME_BOT_TOKEN: ${{ secrets.MEME_BOT_TOKEN }}
+          MEME_CHAT_ID: ${{ secrets.MEME_CHAT_ID }}
+
+      - run: python meme_alert.py --once
+        env:
+          MEME_BOT_TOKEN: ${{ secrets.MEME_BOT_TOKEN }}
+          MEME_CHAT_ID: ${{ secrets.MEME_CHAT_ID }}
